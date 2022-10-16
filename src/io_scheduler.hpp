@@ -7,6 +7,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
@@ -81,20 +82,21 @@ public:
 
   struct schedule_operation {
     friend class io_scheduler;
-    explicit schedule_operation(io_scheduler *io_schedule)
+    explicit schedule_operation(io_scheduler &io_schedule)
         : m_io_schedule{io_schedule} {}
     auto await_ready() noexcept -> bool { return false; }
     auto await_resume() noexcept -> void {}
     auto await_suspend(std::coroutine_handle<> handle) noexcept -> void {
       /* 添加到io_shceduler的线程任务中 */
-      m_io_schedule->m_scheduled_tasks.emplace_back(handle);
+      std::scoped_lock lock(m_io_schedule.m_mut);
+      m_io_schedule.m_scheduled_tasks.emplace_back(handle);
     }
 
   private:
-    io_scheduler *m_io_schedule;
+    io_scheduler &m_io_schedule;
   };
 
-  auto schedule() -> schedule_operation { return schedule_operation{this}; }
+  auto schedule() -> schedule_operation { return schedule_operation{*this}; }
 
   auto shutdown() noexcept -> void {
     isStop.test_and_set();
@@ -155,9 +157,12 @@ private:
       }
 
       std::vector<std::coroutine_handle<>> tmp;
-      tmp.swap(m_scheduled_tasks);
+      {
+        std::scoped_lock lk{m_mut};
+        tmp.swap(m_scheduled_tasks);
+      }
       std::cout << "have " << tmp.size() << " coroutine to resume\n";
-      for (auto task : tmp) {
+      for (const auto& task : tmp) {
         task.resume();
       }
     }
@@ -243,7 +248,6 @@ private:
 
   auto remove_timer_token(std::multimap<uint64_t, poll_info *>::iterator it)
       -> void {
-    std::cout << "run in here\n";
     std::cout << it->first << '\t' << it->second << '\n';
     auto is_first = (m_timed_events.begin() == it);
     m_timed_events.erase(it);
@@ -288,6 +292,7 @@ private:
   std::array<epoll_event, m_max_events> m_events{};
   std::multimap<uint64_t, poll_info *> m_timed_events{};
   std::vector<std::coroutine_handle<>> m_scheduled_tasks{};
+  mutable std::mutex m_mut;
   std::atomic_flag isStop{false};
   /* 添加一个fd--> conn coroutine的map */
   std::unordered_map<int, task<void>> m_coroutines;

@@ -20,12 +20,13 @@ int main() {
   TinyCoroutine::io_scheduler io_scheduler;
 
   auto make_server_task = [&]() -> TinyCoroutine::task<void> {
+    std::cout << "make_server_task: this_thread id: " << std::this_thread::get_id() << '\n';
     TinyTcpServer::Acceptor acceptor(&io_scheduler, "0.0.0.0", 9999);
     std::cout << "acceptor online\n";
-    std::cout << "this_thread id: " << std::this_thread::get_id() << '\n';
+    std::cout << "make_server_task: this_thread id: " << std::this_thread::get_id() << '\n';
     while (true) {
       auto evnet = co_await acceptor.accept();
-      std::cout << "this_thread id: " << std::this_thread::get_id() << '\n';
+      std::cout << "make_server_task: this_thread id: " << std::this_thread::get_id() << '\n';
       /* 处理事件 */
       struct sockaddr_storage client_addr;
       socklen_t client_addr_len = sizeof(client_addr);
@@ -36,14 +37,16 @@ int main() {
 
       /* 为client创建tcp_connection对象 */
       auto make_tcpconn = [&](int clientfd) -> TinyCoroutine::task<void> {
+        std::cout << "make_tcpconn: this_thread id: " << std::this_thread::get_id() << '\n';
         co_await io_scheduler.schedule();
+        std::cout << "make_tcpconn: this_thread id: " << std::this_thread::get_id() << '\n';
         std::cout << "after io_scheduler.schedule()\n";
         TinyTcpServer::TcpConnection conn(&io_scheduler, clientfd);
         while (true) {
           auto event = co_await conn.wait_event(TinyCoroutine::poll_op::READ);
           if (event == TinyCoroutine::poll_status::TIMEOUT) {
             /* 超时,直接结束 */
-            std::cout << "run in here\n";
+            std::cout << "timeout\n";
             break;
           } else if (event == TinyCoroutine::poll_status::CLOSED ||
                      event == TinyCoroutine::poll_status::ERROR) {
@@ -64,7 +67,6 @@ int main() {
             // ...
           }
         }
-        std::cout << "task end\n";
         co_return;
       };
 
