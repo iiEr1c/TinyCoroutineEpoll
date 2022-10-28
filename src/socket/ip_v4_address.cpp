@@ -12,8 +12,8 @@ namespace TinyTcpServer {
 IPv4Address::IPv4Address(const std::string &_ip, uint16_t _port)
     : addr{.sin_family = AF_INET,
            .sin_port = ::htons(_port),
-           .sin_addr = ::inet_addr(_ip.data()),
-           .sin_zero = 0} {}
+           .sin_addr = {.s_addr = ::inet_addr(_ip.data())},
+           .sin_zero = {}} {}
 
 IPv4Address::IPv4Address(sockaddr_in _addr) : addr(_addr) {}
 
