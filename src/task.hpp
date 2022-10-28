@@ -1,7 +1,6 @@
 #pragma once
 #include <coroutine>
 #include <cstdlib>
-#include <iostream>
 #include <type_traits>
 #include <utility>
 
@@ -145,15 +144,16 @@ public:
   }
 
   /* todo copy/move construct/assign */
-  // ~task() {
-  //   /* 在非detach时释放 */
-  //   std::cout << "~task()\n";
-  //   if (!m_detached) {
-  //     if (m_coroutine) {
-  //       m_coroutine.destroy();
-  //     }
-  //   }
-  // }
+  ~task() {
+    /* 在非detach时释放 */
+    if (!m_detached) {
+      if (m_coroutine) {
+        m_coroutine.destroy();
+      }
+    }
+  }
+
+  inline auto get_address() const noexcept { return m_coroutine.address(); }
 
   struct awaitable_base {
     std::coroutine_handle<promise_type> m_coroutine{nullptr};

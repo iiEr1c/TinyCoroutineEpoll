@@ -100,6 +100,7 @@ public:
 
   auto shutdown() noexcept -> void {
     isStop.test_and_set();
+    isStop.notify_all();
     if (m_thread.joinable()) {
       m_thread.join();
     }
@@ -162,7 +163,7 @@ private:
         tmp.swap(m_scheduled_tasks);
       }
       std::cout << "have " << tmp.size() << " coroutine to resume\n";
-      for (const auto& task : tmp) {
+      for (const auto &task : tmp) {
         task.resume();
       }
     }
@@ -180,7 +181,8 @@ private:
 
     // 处理expire的读事件
     uint64_t bytes;
-    ssize_t nbytes = ::read(m_timer_fd, &bytes, sizeof(bytes)); /* 防止事件一直触发 */
+    ssize_t nbytes =
+        ::read(m_timer_fd, &bytes, sizeof(bytes)); /* 防止事件一直触发 */
 
     std::vector<poll_info *> poll_infos{};
     /* 本质是修改poll_info里的状态 */
@@ -223,7 +225,8 @@ private:
     if (!m_timed_events.empty()) {
       auto &[tp, pi] = *m_timed_events.begin();
       /* 如果timepoint大于第一个事件的时间点 */
-      int64_t amount = static_cast<int64_t>(tp - timepoint); /* 如果amount<0说明溢出 */
+      int64_t amount =
+          static_cast<int64_t>(tp - timepoint); /* 如果amount<0说明溢出 */
       if (amount < 100) [[unlikely]] {
         /* 溢出时将超时设置为相对timerfd_settime的1ms */
         amount = 100; /* 100ms误差 */

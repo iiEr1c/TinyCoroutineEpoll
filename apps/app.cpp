@@ -72,7 +72,11 @@ int main() {
   TinyCoroutine::io_scheduler io_scheduler;
   std::string host("0.0.0.0");
   uint16_t port = 9999;
-  TinyCoroutine::sync_wait(
-      make_server_task(&io_scheduler, std::move(host), port));
+  // TinyCoroutine::sync_wait(
+  //     make_server_task(&io_scheduler, std::move(host), port));
+  auto serv = make_server_task(&io_scheduler, std::move(host), port);
+  serv.resume();
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(10s);
   return 0;
 }
