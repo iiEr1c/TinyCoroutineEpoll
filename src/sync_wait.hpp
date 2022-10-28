@@ -158,7 +158,7 @@ namespace TinyCoroutine
     coroutine_type m_coroutine{nullptr};
   };
 
-  template <awaitable awaitable_type, typename return_type = awaitable_traits<
+  template <awaitable awaitable_type, typename return_type = typename awaitable_traits<
                                           awaitable_type>::awaiter_return_type>
   static auto make_sync_wait_task(awaitable_type &&a)
       -> sync_wait_task<return_type>;

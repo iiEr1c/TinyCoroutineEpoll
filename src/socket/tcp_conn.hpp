@@ -28,7 +28,8 @@ public:
    * @param op
    * @return auto
    */
-  auto wait_event(TinyCoroutine::poll_op op) -> TinyCoroutine::task<TinyCoroutine::poll_status> {
+  auto wait_event(TinyCoroutine::poll_op op)
+      -> TinyCoroutine::task<TinyCoroutine::poll_status> {
     // return m_io_schedule->poll(m_client_fd, op);
     return m_io_schedule->poll(m_client_fd, op, 10'000);
   }

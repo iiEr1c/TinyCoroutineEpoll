@@ -38,6 +38,8 @@ list(APPEND CXX_FLAGS_RELEASE
             "-Wno-unused")
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+#set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=-*,readability-*)
 
 # The compiled library code is here
 add_subdirectory(src)

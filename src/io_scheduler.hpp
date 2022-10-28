@@ -180,7 +180,7 @@ private:
 
     // 处理expire的读事件
     uint64_t bytes;
-    size_t n = ::read(m_timer_fd, &bytes, sizeof(bytes)); /* 防止事件一直触发 */
+    ssize_t nbytes = ::read(m_timer_fd, &bytes, sizeof(bytes)); /* 防止事件一直触发 */
 
     std::vector<poll_info *> poll_infos{};
     /* 本质是修改poll_info里的状态 */
@@ -215,7 +215,7 @@ private:
       }
     }
 
-    update_timeout(getNow());
+    update_timeout(static_cast<uint64_t>(getNow()));
   }
 
   auto update_timeout(uint64_t timepoint) -> void {
@@ -223,7 +223,7 @@ private:
     if (!m_timed_events.empty()) {
       auto &[tp, pi] = *m_timed_events.begin();
       /* 如果timepoint大于第一个事件的时间点 */
-      int64_t amount = tp - timepoint; /* 如果amount<0说明溢出 */
+      int64_t amount = static_cast<int64_t>(tp - timepoint); /* 如果amount<0说明溢出 */
       if (amount < 100) [[unlikely]] {
         /* 溢出时将超时设置为相对timerfd_settime的1ms */
         amount = 100; /* 100ms误差 */
@@ -241,7 +241,7 @@ private:
       -> std::multimap<uint64_t, poll_info *>::iterator {
     auto pos = m_timed_events.emplace(tp, pi);
     if (pos == m_timed_events.begin()) {
-      update_timeout(getNow());
+      update_timeout(static_cast<uint64_t>(getNow()));
     }
     return pos;
   }
@@ -252,7 +252,7 @@ private:
     auto is_first = (m_timed_events.begin() == it);
     m_timed_events.erase(it);
     if (is_first) {
-      update_timeout(getNow());
+      update_timeout(static_cast<uint64_t>(getNow()));
     }
   }
 
