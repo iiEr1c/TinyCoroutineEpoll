@@ -100,7 +100,6 @@ public:
 
   auto shutdown() noexcept -> void {
     isStop.test_and_set();
-    isStop.notify_all();
     if (m_thread.joinable()) {
       m_thread.join();
     }
@@ -137,8 +136,9 @@ private:
   void loop() {
     while (!isStop.test()) {
       auto recv_count =
-          ::epoll_wait(m_epoll_fd, m_events.data(), m_max_events, 10'000);
-      if (recv_count < 0) [[unlikely]] {
+          ::epoll_wait(m_epoll_fd, m_events.data(), m_max_events, 1'000);
+      if (recv_count <= 0) [[unlikely]] {
+        // ...
       } else {
         std::cout << "recv [" << recv_count << "] events\n";
         for (size_t i = 0; i < static_cast<std::size_t>(recv_count); ++i) {
