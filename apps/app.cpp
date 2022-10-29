@@ -14,7 +14,7 @@ auto make_tcpconn(TinyCoroutine::io_scheduler *io_scheduler, int clientfd)
   co_await io_scheduler->schedule();
   TinyTcpServer::TcpConnection conn(io_scheduler, clientfd);
   while (true) {
-    auto event = co_await conn.wait_event(TinyCoroutine::poll_op::READ);
+    auto event = co_await conn.wait_event(TinyCoroutine::poll_op::READ, 10'000);
     if (event == TinyCoroutine::poll_status::TIMEOUT ||
         event == TinyCoroutine::poll_status::CLOSED ||
         event == TinyCoroutine::poll_status::ERROR) {
@@ -72,11 +72,11 @@ int main() {
   TinyCoroutine::io_scheduler io_scheduler;
   std::string host("0.0.0.0");
   uint16_t port = 9999;
-  // TinyCoroutine::sync_wait(
-  //     make_server_task(&io_scheduler, std::move(host), port));
-  auto serv = make_server_task(&io_scheduler, std::move(host), port);
-  serv.resume();
-  using namespace std::chrono_literals;
-  std::this_thread::sleep_for(10s);
+  TinyCoroutine::sync_wait(
+      make_server_task(&io_scheduler, std::move(host), port));
+  // auto serv = make_server_task(&io_scheduler, std::move(host), port);
+  // serv.resume();
+  // using namespace std::chrono_literals;
+  // std::this_thread::sleep_for(10s);
   return 0;
 }
