@@ -44,7 +44,7 @@ public:
     return n;
   }
 
-  ssize_t send(void *buf, size_t length) {
+  ssize_t send(const char *buf, size_t length) {
     ssize_t n = ::write(m_client_fd, buf, length);
     return n;
   }

@@ -41,13 +41,13 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
 #set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=-*,readability-*)
 
+include(3rd/fmt.cmake)
+include(3rd/spdlog.cmake)
+
 # The compiled library code is here
 add_subdirectory(src)
-
 # The executable code is here
 add_subdirectory(apps)
-
-include(3rd/spdlog.cmake)
 
 enable_testing()
 #if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)

@@ -8,7 +8,9 @@ set(HEADER_LIST
     "socket/acceptor.hpp"
     "socket/ip_v4_address.hpp"
     "socket/ip_v4_address.cpp"
-    "socket/tcp_conn.hpp")
+    "socket/tcp_conn.hpp"
+    "socket/tcp_server.hpp"
+    "ignoreSigPipe.hpp")
 
 add_library(TinyCoroutine ${HEADER_LIST})
 
@@ -29,4 +31,4 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(TinyCoroutine PRIVATE ${SANITIZE_FLAG})
 endif()
 
-target_link_libraries(TinyCoroutine PRIVATE spdlog::spdlog)
+target_link_libraries(TinyCoroutine PUBLIC fmt::fmt)
