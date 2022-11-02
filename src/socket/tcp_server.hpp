@@ -26,6 +26,7 @@ struct TcpServer {
   }
 
   auto accept() -> TinyCoroutine::task<void> {
+    co_await m_io_scheduler->schedule();
     while (true) {
       auto event = co_await m_acceptor->accept();
       if (event == TinyCoroutine::poll_status::READ) {
