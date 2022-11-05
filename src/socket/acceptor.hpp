@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 
 namespace TinyTcpServer {
@@ -28,6 +29,7 @@ public:
                  static_cast<socklen_t>(sizeof(optval)));
     ::setsockopt(m_acceptFd, SOL_SOCKET, SO_REUSEPORT, &optval,
                  static_cast<socklen_t>(sizeof(optval)));
+
     int ret =
         ::bind(m_acceptFd, m_host_addr.getSockaddr_in(), sizeof(sockaddr_in));
     ::listen(m_acceptFd, SOMAXCONN);
@@ -39,6 +41,35 @@ public:
 
   auto accept() -> TinyCoroutine::task<TinyCoroutine::poll_status> {
     return m_io_schedule->poll(m_acceptFd, TinyCoroutine::poll_op::READ);
+  }
+
+  void setkeepalive(int fd, unsigned int begin, unsigned int cnt,
+                    unsigned int intvl) {
+    if (fd) {
+      int keepalive = 1;
+      if (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive,
+                       static_cast<socklen_t>(keepalive)) == -1) {
+        // log, enable keepalive error
+      }
+
+      // 距离上次发送数据多长时间后开始探测
+      if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &begin,
+                     static_cast<socklen_t>(begin)) == -1) {
+        // log
+      }
+
+      //探测没有回应要坚持多少次
+      if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt,
+                     static_cast<socklen_t>(cnt)) == -1) {
+        // log
+      }
+
+      //无数据交互下 每隔多长时间探测一次
+      if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl,
+                     static_cast<socklen_t>(intvl)) == -1) {
+        // log
+      }
+    }
   }
 };
 }; // namespace TinyTcpServer
