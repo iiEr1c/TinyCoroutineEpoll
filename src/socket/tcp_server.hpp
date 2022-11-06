@@ -35,7 +35,8 @@ struct TcpServer {
         int clientfd = ::accept4(
             m_acceptor->fd(), reinterpret_cast<sockaddr *>(&client_addr),
             &client_addr_len, SOCK_CLOEXEC | SOCK_NONBLOCK);
-        handle_conn(m_io_scheduler.get(), clientfd).detach();
+        m_conns[clientfd] = handle_conn(m_io_scheduler.get(), clientfd);
+        m_conns[clientfd].resume();
       } else {
         // log and ignore...
       }
@@ -48,9 +49,8 @@ struct TcpServer {
     co_await io_scheduler->schedule();
     TinyTcpServer::TcpConnection conn(io_scheduler, clientfd);
     while (true) {
-      // timeout 30's
-      auto event =
-          co_await conn.wait_event(TinyCoroutine::poll_op::READ, 30'000);
+      auto event = co_await conn.wait_event(TinyCoroutine::poll_op::READ,
+                                            60'000); // timeout 60s
       if (event == TinyCoroutine::poll_status::TIMEOUT ||
           event == TinyCoroutine::poll_status::CLOSED ||
           event == TinyCoroutine::poll_status::ERROR) {
@@ -72,7 +72,6 @@ struct TcpServer {
 private:
   std::shared_ptr<TinyCoroutine::io_scheduler> m_io_scheduler;
   std::shared_ptr<TinyTcpServer::Acceptor> m_acceptor;
-  // 生命周期如何处理?
   std::map<int, TinyCoroutine::task<void>> m_conns;
 };
 } // namespace TinyTcpServer

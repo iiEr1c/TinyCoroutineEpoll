@@ -4,7 +4,7 @@
 #include "task.hpp"
 #include <array>
 #include <atomic>
-#include <iostream>
+#include <fmt/core.h>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -140,17 +140,17 @@ private:
       if (recv_count <= 0) [[unlikely]] {
         // ...
       } else {
-        std::cout << "recv [" << recv_count << "] events\n";
+        fmt::print("recv [{}] events\n", recv_count);
         for (size_t i = 0; i < static_cast<std::size_t>(recv_count); ++i) {
           epoll_event &event = m_events[i];
           if (event.data.ptr == m_timer_ptr) {
-            std::cout << "handle timeout event\n";
+            fmt::print("handle timeout event\n");
             process_timeout_execute();
           } else {
             /* 暂时未添加超时等功能, 这里直接强转为poll_info* */
             auto *handle_ptr = static_cast<poll_info *>(event.data.ptr);
-            std::cout << "第" << i + 1 << "个事件, 事件类型["
-                      << event_to_string(event.events) << "]\n";
+            fmt::print("{}th event, event type[{}]\n", i + 1,
+                       event_to_string(event.events));
             process_event_execute(handle_ptr,
                                   event_to_poll_status(event.events));
           }
@@ -162,7 +162,7 @@ private:
         std::scoped_lock lk{m_mut};
         tmp.swap(m_scheduled_tasks);
       }
-      std::cout << "have " << tmp.size() << " coroutine to resume\n";
+      fmt::print("have [{}] coroutine to resume\n", tmp.size());
       for (const auto &task : tmp) {
         task.resume();
       }
@@ -199,7 +199,7 @@ private:
       }
     }
 
-    std::cout << "poll_infos.size() = " << poll_infos.size() << '\n';
+    fmt::print("have [{}] events timeout\n", poll_infos.size());
     for (auto pi : poll_infos) {
       /* 超时, 从epoll中删除该fd, 置为已访问过 */
       if (!pi->is_timeout) {
@@ -209,11 +209,11 @@ private:
           ::epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, pi->m_fd, nullptr);
         }
         pi->m_poll_status = poll_status::TIMEOUT;
-        std::cout << "ready to resume " << pi->m_awaiting_coroutine.address()
-                  << '\n';
+        fmt::print("ready to resume timeout coroutine [{}]\n",
+                   pi->m_awaiting_coroutine.address());
         pi->m_awaiting_coroutine
             .resume(); /* 恢复pi对应的协程, 注意这里可能会和读写事件竞争,
-                          所以增加了processed判断 */
+                          所以增加了 processed 判断 */
       }
     }
 
@@ -251,8 +251,7 @@ private:
 
   auto remove_timer_token(std::multimap<uint64_t, poll_info *>::iterator it)
       -> void {
-    std::cout << it->first << '\t' << it->second << '\n';
-    auto is_first = (m_timed_events.begin() == it);
+    bool is_first = (m_timed_events.begin() == it);
     m_timed_events.erase(it);
     if (is_first) {
       update_timeout(static_cast<uint64_t>(getNow()));
@@ -262,11 +261,11 @@ private:
   auto process_event_execute(poll_info *pi, poll_status status) -> void {
     /* 在epoll中其实就限制了超时和可读可写不可能在一个loop中出现 */
     if (!pi->is_timeout) [[likely]] {
-      std::cout << "process_event_execute(): m_fd = " << pi->m_fd << '\n';
-      if (pi->m_fd != -1) {
+      fmt::print("process_event_execute(): [{}]\n", pi->m_fd);
+      if (pi->m_fd != -1) [[likely]] {
         int ret = ::epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, pi->m_fd, nullptr);
         if (ret != 0) {
-          std::cout << "epoll_ctl error\n";
+          // log
         }
       }
 

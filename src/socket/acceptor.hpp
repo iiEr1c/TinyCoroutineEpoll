@@ -15,7 +15,7 @@ namespace TinyTcpServer {
 
 void setkeepalive(int fd, unsigned int begin, unsigned int cnt,
                   unsigned int intvl) {
-  if (fd >= 0) {
+  if (fd >= 0) [[likely]] {
     unsigned int keepalive = 1;
     ::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
     ::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &begin, sizeof(begin));
@@ -41,7 +41,7 @@ public:
                  static_cast<socklen_t>(sizeof(optval)));
     ::setsockopt(m_acceptFd, SOL_SOCKET, SO_REUSEPORT, &optval,
                  static_cast<socklen_t>(sizeof(optval)));
-
+    setkeepalive(m_acceptFd, 10 * 60, 8, 10); // 10分钟, 探测8次, 间隔10s
     int ret =
         ::bind(m_acceptFd, m_host_addr.getSockaddr_in(), sizeof(sockaddr_in));
     ::listen(m_acceptFd, SOMAXCONN);

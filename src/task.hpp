@@ -1,9 +1,9 @@
 #pragma once
 #include <coroutine>
 #include <cstdlib>
+#include <iostream>
 #include <type_traits>
 #include <utility>
-
 namespace TinyCoroutine {
 template <typename return_type = void> class task;
 
@@ -16,8 +16,6 @@ template <typename return_type> struct promise {
 
   friend struct final_awaitable;
   struct final_awaitable {
-    std::coroutine_handle<> m_release_detached;
-
     auto await_ready() noexcept -> bool { return false; }
     auto await_resume() noexcept -> void {}
 
@@ -28,25 +26,17 @@ template <typename return_type> struct promise {
       if (promise.m_coroutination != nullptr) {
         return promise.m_coroutination;
       } else {
-        /* 只有detach时才会设置 m_release_detached */
-        if (m_release_detached) {
-          m_release_detached.destroy();
-        }
         return std::noop_coroutine();
       }
     }
   };
 
-  auto final_suspend() noexcept { return final_awaitable{m_release_detached}; }
+  auto final_suspend() noexcept { return final_awaitable{}; }
 
   auto unhandled_exception() -> void { std::abort(); }
 
   auto set_continuation(std::coroutine_handle<> continuation) noexcept -> void {
     m_coroutination = continuation;
-  }
-
-  auto set_detached_task(std::coroutine_handle<> h) noexcept -> void {
-    this->m_release_detached = h;
   }
 
   auto return_value(return_type value) noexcept -> void {
@@ -58,8 +48,7 @@ template <typename return_type> struct promise {
   auto result() && -> return_type && { return std::move(m_return_value); }
 
 private:
-  std::coroutine_handle<> m_coroutination{nullptr};    /* callee */
-  std::coroutine_handle<> m_release_detached{nullptr}; /* 实验性 */
+  std::coroutine_handle<> m_coroutination{nullptr}; /* callee */
   return_type m_return_value;
 };
 
@@ -72,9 +61,6 @@ template <> struct promise<void> {
 
   friend struct final_awaitable;
   struct final_awaitable {
-
-    std::coroutine_handle<> m_release_detached;
-
     auto await_ready() noexcept -> bool { return false; }
     auto await_resume() noexcept -> void {}
 
@@ -85,16 +71,12 @@ template <> struct promise<void> {
       if (promise.m_coroutination != nullptr) {
         return promise.m_coroutination;
       } else {
-        /* 只有detach时才会设置 m_release_detached */
-        if (m_release_detached) {
-          m_release_detached.destroy();
-        }
         return std::noop_coroutine();
       }
     }
   };
 
-  auto final_suspend() noexcept { return final_awaitable{m_release_detached}; }
+  auto final_suspend() noexcept { return final_awaitable{}; }
 
   auto unhandled_exception() -> void { std::abort(); }
 
@@ -102,17 +84,12 @@ template <> struct promise<void> {
     m_coroutination = continuation;
   }
 
-  auto set_detached_task(std::coroutine_handle<> h) noexcept -> void {
-    this->m_release_detached = h;
-  }
-
   auto return_void() noexcept -> void {}
 
   auto result() -> void {}
 
 private:
-  std::coroutine_handle<> m_coroutination{nullptr};    /* callee */
-  std::coroutine_handle<> m_release_detached{nullptr}; /* 实验性 */
+  std::coroutine_handle<> m_coroutination{nullptr}; /* callee */
 };
 
 template <typename return_type> class task {
@@ -145,11 +122,9 @@ public:
 
   /* todo copy/move construct/assign */
   ~task() {
-    /* 在非detach时释放 */
-    if (!m_detached) {
-      if (m_coroutine) {
-        m_coroutine.destroy();
-      }
+    if (m_coroutine) {
+      auto handle = std::exchange(m_coroutine, nullptr);
+      handle.destroy();
     }
   }
 
@@ -218,20 +193,8 @@ public:
 
   auto handle() -> coroutine_handle { return m_coroutine; }
 
-  /*
-   * 实验性
-   * 使用detach一定要确保该协程执行到结束, 即执行到co_return处
-   * 触发final_suspend
-   */
-  auto detach() -> void {
-    m_coroutine.promise().set_detached_task(m_coroutine);
-    m_detached = true;
-    m_coroutine.resume(); /* 恢复自己 */
-  }
-
 private:
   coroutine_handle m_coroutine{nullptr};
-  bool m_detached{false};
 };
 
 template <typename return_type>
